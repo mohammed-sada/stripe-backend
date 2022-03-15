@@ -1,5 +1,5 @@
 import Stripe from 'stripe';
-import { stripe } from '.';
+import { stripe } from '..';
 
 export async function createCheckoutStripeSession(
   line_items: Stripe.Checkout.SessionCreateParams.LineItem[]
