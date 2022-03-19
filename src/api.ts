@@ -8,8 +8,13 @@ import { validateUser } from './utils/validateUser';
 
 import { createCheckoutStripeSession } from './stripe/checkout';
 import { createPaymentIntent } from './stripe/payment';
-import { stripeWebhookHandler } from './stripe/webHooks';
 import { createSetupIntent, listPaymentmethods } from './stripe/customers';
+import { stripeWebhookHandler } from './stripe/webHooks';
+import {
+  cancelSubscription,
+  createSubscription,
+  listSubscriptions,
+} from './stripe/blilling';
 
 export const app = express();
 
@@ -22,6 +27,8 @@ app.use(
 app.use(morgan('combined'));
 app.use(cors({ origin: true }));
 app.use(verifyToken);
+
+app.post('/webhook', runAsync(stripeWebhookHandler));
 
 app.post(
   '/checkout',
@@ -37,15 +44,49 @@ app.post(
   })
 );
 
-app.post('/webhook', runAsync(stripeWebhookHandler));
-
 app.post('/wallet', async (req: Request, res: Response) => {
+  // create a new payment-method for a specific customer for future use
   const user = validateUser(req);
   res.json(await createSetupIntent(user.uid));
 });
 
-app.get('/wallet', async (req: Request, res: Response) => {
-  const user = validateUser(req);
-  const paymentMethods = await listPaymentmethods(user.uid);
-  res.json(paymentMethods.data); // array of payment methods
-});
+app.get(
+  '/wallet',
+  runAsync(async (req: Request, res: Response) => {
+    const user = validateUser(req);
+    const paymentMethods = await listPaymentmethods(user.uid);
+    res.json(paymentMethods.data); // array of payment methods
+  })
+);
+
+app.get(
+  '/subscriptions',
+  runAsync(async (req: Request, res: Response) => {
+    const user = validateUser(req);
+    const subscriptions = await listSubscriptions(user.uid);
+    res.json(subscriptions.data);
+  })
+);
+
+app.post(
+  '/subscriptions',
+  runAsync(async (req: Request, res: Response) => {
+    const user = validateUser(req);
+    const { payment_method, plan } = req.body;
+    const subscription = await createSubscription(
+      user.uid,
+      payment_method,
+      plan
+    );
+    res.json(subscription);
+  })
+);
+
+app.patch(
+  '/subscriptions/:id',
+  runAsync(async (req: Request, res: Response) => {
+    const user = validateUser(req);
+    const subscription = await cancelSubscription(user.uid, req.params.id);
+    res.json(subscription);
+  })
+);

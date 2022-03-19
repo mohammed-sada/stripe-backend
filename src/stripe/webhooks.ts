@@ -1,5 +1,6 @@
 import Stripe from 'stripe';
 import { stripe } from '..';
+import { firestore, arrayUnion, arrayRemove } from '../firebase';
 
 /*
  1- Validate the stripe webhook secret
@@ -12,6 +13,39 @@ const webhookHandlers = {
     // fullfil the user purchase
   },
   'payment_intent.payment_failed': async (data: Stripe.PaymentIntent) => {},
+  'customer.subscription.deleted': async (data: Stripe.Subscription) => {
+    const customer = (await stripe.customers.retrieve(
+      data.customer as string
+    )) as Stripe.Customer;
+    const userId = customer.metadata.firebaseUID;
+    const userRef = firestore.collection('users').doc(userId);
+
+    await userRef.update({
+      activePlans: arrayRemove(data.items.data[0].plan.id),
+    });
+  },
+  'customer.subscription.created': async (data: Stripe.Subscription) => {
+    const customer = (await stripe.customers.retrieve(
+      data.customer as string
+    )) as Stripe.Customer;
+    const userId = customer.metadata.firebaseUID;
+    const userRef = firestore.collection('users').doc(userId);
+
+    await userRef.update({
+      activePlans: data.items.data[0].plan.id,
+    });
+  },
+  'invoice.payment_succeeded': async (data: Stripe.Invoice) => {
+    // Add your business logic here
+  },
+  'invoice.payment_failed': async (data: Stripe.Invoice) => {
+    const customer = (await stripe.customers.retrieve(
+      data.customer as string
+    )) as Stripe.Customer;
+    const userId = customer.metadata.firebaseUID;
+    const userSnapshot = await firestore.collection('users').doc(userId).get();
+    await userSnapshot.ref.update({ status: 'PAST_DUE' });
+  },
 };
 
 export async function stripeWebhookHandler(req, res) {

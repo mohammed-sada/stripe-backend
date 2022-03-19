@@ -6,7 +6,7 @@ export async function verifyToken(
   res: Response,
   next: NextFunction
 ) {
-  if (req?.headers?.authorization.startsWith('Bearer ')) {
+  if (req?.headers?.authorization?.startsWith('Bearer ')) {
     try {
       const token = req.headers.authorization.split('Bearer ')[1];
       const decodedToken = await auth.verifyIdToken(token);
@@ -14,6 +14,6 @@ export async function verifyToken(
     } catch (error) {
       console.log(error);
     }
-    next();
   }
+  next();
 }
