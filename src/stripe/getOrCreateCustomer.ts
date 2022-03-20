@@ -7,11 +7,12 @@ export async function getOrCreateCustomer(
   params?: Stripe.CustomerCreateParams
 ): Promise<Stripe.Customer> {
   const userSnapshot = await firestore.collection('users').doc(userId).get();
-  const { stripeCustomerId, email } = userSnapshot.data();
-
+  const { stripeCustomerId, email, displayName } = userSnapshot.data();
+  console.log(email);
   if (!stripeCustomerId) {
     const customer = await stripe.customers.create({
       email,
+      name: displayName,
       metadata: {
         firebaseUID: userId,
       },

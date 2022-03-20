@@ -32,7 +32,7 @@ const webhookHandlers = {
     const userRef = firestore.collection('users').doc(userId);
 
     await userRef.update({
-      activePlans: data.items.data[0].plan.id,
+      activePlans: arrayUnion(data.items.data[0].plan.id),
     });
   },
   'invoice.payment_succeeded': async (data: Stripe.Invoice) => {
